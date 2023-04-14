@@ -1,53 +1,42 @@
 # kakao_flutter_sdk
 
-This document introduces how to use the Kakao SDK for Flutter (Flutter SDK). The Flutter SDK supports Android and iOS platforms as of now, and will support web platform in the near future.
+이 라이브러리는 https://github.com/kakao/kakao_flutter_sdk 를 기반으로 uni_links 를 이용해 딥링크를 구현한 환경에서도 잘 동작하게 하기 위한 라이브러리입니다. 라이브러리 버전은 1.4.2를 기준으로 합니다.
 
-## Requirements
+## 이용법
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  ...
+  kakao_flutter_sdk: ^1.4.2
+  kakao_flutter_sdk_share: ^1.4.2 # 카카오톡 공유
+dependency_overrides:
+  kakao_flutter_sdk_common:
+    git: https://github.com/KimWash/kakao_flutter_sdk_common
+```
+pubspec.yaml에 다음과 같이 dependency_overrides 란에 추가해주시면 됩니다.
 
-Here are what you need to use the Flutter SDK:
+## 어떻게 해결했어요?
+이 이슈와 관련있습니다. https://github.com/avioli/uni_links/issues/63 
 
-- Dart 2.14.0 or higher
-- Flutter 2.0.0 or higher
-- Android Studio 3.6.1 or higher
-- Target Android API level 21 or higher (Android 5.0 (Lollipop) or higher)
-- Xcode 11.0 or higher
-- iOS 11.0 or higher
-- iOS Deployment Target 11.0 or higher
-- [Web browser support](https://developers.kakao.com/docs/latest/getting-started/sdk-flutter#supported-browser)
-
-## How to develop
-
-To integrate the Kakao APIs with the Flutter SDK, read the following documentation:
-
-- [Getting started](https://developers.kakao.com/docs/latest/getting-started/sdk-flutter)
-- [Kakao Login](https://developers.kakao.com/docs/latest/kakaologin/flutter)
-- [Kakao Talk Social](https://developers.kakao.com/docs/latest/kakaotalk-social/flutter)
-- [Kakao Talk Sharing](https://developers.kakao.com/docs/latest/message/flutter-link)
-- [Kakao Talk Messaging](https://developers.kakao.com/docs/latest/message/flutter)
-- [Kakao Story](https://developers.kakao.com/docs/latest/kakaostory/flutter)
-- [Kakao Talk Channel](https://developers.kakao.com/docs/latest/kakaotalk-channel/flutter)
-- [Kakao Sync](https://developers.kakao.com/docs/latest/kakaosync/terms#flutter)
-- [Kakao Navi](https://developers.kakao.com/docs/latest/kakaonavi/flutter)
-
-## How to Contribute
-
-If you want to contribute to this repository, read the followings:
-
-- [Submitting Pull Requests](https://github.com/kakao/kakao_flutter_sdk/wiki/Submitting-Pull-Requests)
-- [Development Guide](https://github.com/kakao/kakao_flutter_sdk/wiki/Development-Guide)
-
-## License
-
-This software is licensed under the [Apache 2 license](packages/kakao_flutter_sdk/LICENSE), quoted below.
-
-Copyright 2019 Kakao Corp. <https://www.kakaocorp.com>
-
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this project except in compliance with the License. You may obtain a copy
-of the License at http://www.apache.org/licenses/LICENSE-2.0.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
+카카오톡 스킴이 아닌 경우에도 application 메서드가 true를 리턴해 uni_links에서 이벤트를 못받는 것으로 추측됩니다. 자세한 것은 https://github.com/kakao/kakao_flutter_sdk/issues/86 를 참고해주세요.
+```swift
+   public func application(_ application: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        
+        let urlString = url.absoluteString
+        if(redirectUri != nil && urlString.starts(with: "kakao") && urlString.contains(Constants.oauthPath)) {
+            if(urlString.hasPrefix(redirectUri!)) {
+                self.authorizeTalkCompletionHandler?(url, nil)
+                return true
+            } else {
+                self.authorizeTalkCompletionHandler?(nil, FlutterError(code: "REDIRET_URL_MISMATCH", message: "Expected: \(redirectUri!), Actual: \(url.absoluteString)", details: nil))
+                // If the redirect uri set in sdk is different from the uri received from the server, sdk cannot handle it, so return false
+                return false
+            }
+        } else if(urlString.starts(with: "kakao") && (urlString.contains(Constants.talkSharingPath) || urlString.contains(Constants.storyPath))) {
+            eventSink?(urlString)
+            return true
+        }
+        return false
+    }
+```
